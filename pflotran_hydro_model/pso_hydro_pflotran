@@ -1,0 +1,476 @@
+import pandas as pd
+import csv
+
+# Define the name and path of the new CSV file
+csv_file_name = 'pso_results_vang_mual_20230408.csv'
+csv_file_path = '/Users/ahaynes/pflotran_work/elkhorn_slough/current_iteration/elk_PFL_20230331/pso results/vang_mul/' + csv_file_name
+
+# Define the column names for the CSV file
+column_names = ['id1_por','id1_perm','id2_por','id2_perm','id3_por','id3_perm','id4_por','id4_perm','id5_por','id5_perm','sf_m_1','sf_alpha_1','sf_lrs_1','pf_m_1','pf_lrs_1','rmse']
+
+# Create an empty DataFrame with the defined column names
+pso_data = pd.DataFrame(columns=column_names)
+
+# Write the DataFrame to the CSV file with header
+pso_data.to_csv(csv_file_path, index=False)
+
+# Create a dataframe from which we can generate a plot to monitor the rmse
+list_rmse = []
+
+
+# Define the objective function to be minimized
+def objective_function(x):
+    import subprocess
+    import numpy as np
+    import h5py as h5
+    import pandas as pd
+    import xarray as xr
+    import csv
+    import matplotlib.pyplot as plt
+    import warnings
+    
+    warnings.filterwarnings("ignore")
+    
+    # Set the porosity and permeability parameters in PFLOTRAN
+
+    # Define the grid input parameters
+    nx = 40  # number of cells in x direction
+    ny = 100  # number of cells in y direction
+    dx = 0.5  # cell size in x direction
+    dy = 0.1  # cell size in y direction
+
+    #time steps
+    #final time model length
+    final_t = '2.d0 y'
+    #intial time step
+    init_dt = '1.d0 s'
+    #max time step
+    max_dt = '1 d'
+
+    #output
+    #periodic time
+    pt = '1.d0 d'
+
+    #inital datumn
+    init_dat = '9.82d0'
+    
+    # Set the porosity and permeability and van genuchten parameters in PFLOTRAN
+    id1_por, id1_perm ,id2_por ,id2_perm ,id3_por ,id3_perm, id4_por ,id4_perm, id5_por ,id5_perm, sf_m_1, sf_alpha_1, sf_lrs_1, pf_m_1, pf_lrs_1 = x
+    
+    # Run the PFLOTRAN groundwater model and calculate the objective function value
+    # (e.g., the difference between the model results and the observed data)
+    
+    with open('/Users/ahaynes/pflotran_work/elkhorn_slough/current_iteration/elk_PFL_20230331/elkhorn_HM_20230331.in','w') as f:
+        # Write the simulation control block
+        f.write('  WALLCLOCK_STOP 10 min\n')
+        f.write('SIMULATION\n')
+
+        f.write('  SIMULATION_TYPE SUBSURFACE\n')
+        f.write('  PROCESS_MODELS\n')
+        f.write('    SUBSURFACE_FLOW flow\n')
+        f.write('      MODE RICHARDS\n')
+        f.write(' /\n')
+        f.write('/\n')
+        f.write('END\n\n')
+        f.write('SUBSURFACE\n')
+
+        # Write the grid parameters
+        f.write('GRID\n')
+        f.write('  TYPE STRUCTURED\n')
+        f.write('  ORIGIN 0.d0 0.d0 0.d0\n')
+        f.write('  GRAVITY 0 -9.8068 0\n')
+        f.write('  NXYZ  '+str(nx)+' '+str(ny)+' 1\n')
+        f.write('  DXYZ\n')
+        f.write('     '+str(dx)+'\n')
+        f.write('     '+str(dy)+'\n')
+        f.write('     1.0E+00\n')
+        f.write('  /\n')
+        f.write('END\n\n')
+
+        # Write the regions block
+        f.write('REGION all\n')
+        f.write('  COORDINATES\n')
+        f.write('    0.d0 0.d0 0.d0\n')
+        f.write('    1000.d0 1000.d0 1000.d0\n')
+        f.write('  /\n')
+        f.write('END\n\n')
+
+        f.write('REGION top_surface\n')
+        f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+        f.write('END\n\n')
+
+        f.write('REGION east_boundary\n')
+        f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+        f.write('END\n\n')
+
+        f.write('REGION west_boundary\n')
+        f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+        f.write('END\n\n')
+
+        f.write('REGION zone1\n')
+        f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+        f.write('END\n\n')
+
+        f.write('REGION zone2\n')
+        f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+        f.write('END\n\n')
+
+        f.write('REGION zone3\n')
+        f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+        f.write('END\n\n')
+
+        f.write('REGION zone4\n')
+        f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+        f.write('END\n\n')
+
+        f.write('REGION zone5\n')
+        f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+        f.write('END\n\n')
+
+        # Write the characteristic curve block
+        f.write('CHARACTERISTIC_CURVES sf1\n')
+        f.write('  SATURATION_FUNCTION VAN_GENUCHTEN\n')
+        f.write('  M '+str(sf_m_1)+'\n')
+        f.write('  ALPHA   '+str(sf_alpha_1)+'\n')
+        f.write('  LIQUID_RESIDUAL_SATURATION '+str(sf_lrs_1)+'\n')
+        f.write('  /\n')
+        f.write('  PERMEABILITY_FUNCTION MUALEM_VG_LIQ\n')
+        f.write('  M '+str(pf_m_1)+'\n')
+        f.write('  LIQUID_RESIDUAL_SATURATION '+str(pf_lrs_1)+'\n')
+        f.write('  /\n')
+        f.write('END\n\n')
+
+
+        # Write the rock properties block
+        f.write('MATERIAL_PROPERTY soil1\n')
+        f.write('  ID 1\n')
+        f.write('  POROSITY '+str(id1_por)+'\n')
+        f.write('  PERMEABILITY\n')
+        f.write('    PERM_ISO '+str(id1_perm)+'\n')
+        f.write('  /\n')
+        f.write('  CHARACTERISTIC_CURVES sf1\n')
+        f.write('END\n\n')
+
+        # Write the rock properties block
+        f.write('MATERIAL_PROPERTY soil2\n')
+        f.write('  ID 2\n')
+        f.write('  POROSITY '+str(id2_por)+'\n')
+        f.write('  PERMEABILITY\n')
+        f.write('    PERM_ISO '+str(id2_perm)+'\n')
+        f.write('  /\n')
+        f.write('  CHARACTERISTIC_CURVES sf1\n')
+        f.write('END\n\n')
+
+        # Write the rock properties block
+        f.write('MATERIAL_PROPERTY soil3\n')
+        f.write('  ID 3\n')
+        f.write('  POROSITY '+str(id3_por)+'\n')
+        f.write('  PERMEABILITY\n')
+        f.write('    PERM_ISO '+str(id3_perm)+'\n')
+        f.write('  /\n')
+        f.write('  CHARACTERISTIC_CURVES sf1\n')
+        f.write('END\n\n')
+
+        # Write the rock properties block
+        f.write('MATERIAL_PROPERTY soil4\n')
+        f.write('  ID 4\n')
+        f.write('  POROSITY '+str(id4_por)+'\n')
+        f.write('  PERMEABILITY\n')
+        f.write('    PERM_ISO '+str(id4_perm)+'\n')
+        f.write('  /\n')
+        f.write('  CHARACTERISTIC_CURVES sf1\n')
+        f.write('END\n\n')
+
+        # Write the rock properties block
+        f.write('MATERIAL_PROPERTY soil5\n')
+        f.write('  ID 5\n')
+        f.write('  POROSITY '+str(id5_por)+'\n')
+        f.write('  PERMEABILITY\n')
+        f.write('    PERM_ISO '+str(id5_perm)+'\n')
+        f.write('  /\n')
+        f.write('  CHARACTERISTIC_CURVES sf1\n')
+        f.write('END\n\n')
+
+
+        # Write the initial condition block
+        f.write('FLOW_CONDITION inital\n')
+        f.write('  TYPE\n')
+        f.write('    PRESSURE hydrostatic\n')
+        f.write('  /\n')
+        f.write('  DATUM 0.d0 '+init_dat+' 0\n')
+        f.write('  GRADIENT\n')
+        f.write('  LIQUID_PRESSURE 0 -1 0\n')
+        f.write('  /\n')
+        f.write('  PRESSURE 101325.d0\n')
+        f.write('END\n\n')
+
+        # Write the east flow condition block
+        f.write('FLOW_CONDITION east_flow_condition\n')
+        f.write('  TYPE\n')
+        f.write('    PRESSURE seepage\n')
+        f.write('  /\n')
+        f.write('  CYCLIC\n')
+        f.write('  DATUM FILE ./flow-condition/east_bc_elk\n')
+        f.write('  GRADIENT\n')
+        f.write('  LIQUID_PRESSURE 0 -1 0\n')
+        f.write('  /\n')
+        f.write('  PRESSURE 101325.d0\n')
+        f.write('END\n\n')
+
+        # Write the west flow condition block
+        f.write('FLOW_CONDITION west_flow_condition\n')
+        f.write('  TYPE\n')
+        f.write('    PRESSURE hydrostatic\n')
+        f.write('  /\n')
+        f.write('  CYCLIC\n')
+        f.write('  DATUM FILE  ./flow-condition/west_bc_elk\n')
+        f.write('  GRADIENT\n')
+        f.write('  LIQUID_PRESSURE 0 -1 0\n')
+        f.write('  /\n')
+        f.write('  PRESSURE 101325.d0\n')
+        f.write('END\n\n')
+
+        # Write the recharge condition block
+        f.write('FLOW_CONDITION recharge\n')
+        f.write('  TYPE\n')
+        f.write('    FLUX neumann\n')
+        f.write('  /\n')
+        f.write('  CYCLIC\n')
+        f.write('  FLUX FILE  ./flow-condition/precip_bc_elk.txt\n')
+        f.write('END\n\n')
+
+        # Write the ETo condition block
+        f.write('FLOW_CONDITION eto\n')
+        f.write('  TYPE\n')
+        f.write('    RATE VOLUMETRIC_RATE\n')
+        f.write('  /\n')
+        f.write('  CYCLIC\n')
+        f.write('  RATE FILE  ./flow-condition/et_rate_m_elk.txt\n')
+        f.write('END\n\n')
+
+        # Write the recharge boundary condition block
+        f.write('SOURCE_SINK eto_top\n')
+        f.write('  FLOW_CONDITION eto\n')
+        f.write('  REGION top_surface\n')
+        f.write('END\n\n')
+
+        # Write the seepageface condition block
+        f.write('FLOW_CONDITION seepage_top\n')
+        f.write('  TYPE\n')
+        f.write('    PRESSURE seepage\n')
+        f.write('  /\n')
+        f.write('  PRESSURE 101325.d0\n')
+        f.write('END\n\n')
+
+        # Write the initial boundary condition block
+        f.write('INITIAL_CONDITION\n')
+        f.write('  FLOW_CONDITION inital\n')
+        f.write('  REGION all\n')
+        f.write('END\n\n')
+
+        # Write the east boundary condition block
+        f.write('BOUNDARY_CONDITION east\n')
+        f.write('  FLOW_CONDITION east_flow_condition\n')
+        f.write('  REGION east_boundary\n')
+        f.write('END\n\n')
+
+        # Write the west boundary condition block
+        f.write('BOUNDARY_CONDITION west\n')
+        f.write('  FLOW_CONDITION west_flow_condition\n')
+        f.write('  REGION west_boundary\n')
+        f.write('END\n\n')
+
+        # Write the recharge boundary condition block
+        f.write('BOUNDARY_CONDITION infiltration_top\n')
+        f.write('  FLOW_CONDITION recharge\n')
+        f.write('  REGION top_surface\n')
+        f.write('END\n\n')
+
+
+
+        # Write the seepage boundary condition block
+        f.write('BOUNDARY_CONDITION seepage_boundary\n')
+        f.write('  FLOW_CONDITION seepage_top\n')
+        f.write('  REGION top_surface\n')
+        f.write('END\n\n')
+
+        # Write the stratigraphy couplers block
+        f.write('STRATA\n')
+        f.write('FILE ./Model_info_Elkhorn_Slough.h5\n')
+        f.write('END\n\n')
+
+        # Write the time block
+        f.write('TIME\n')
+        f.write('  FINAL_TIME '+final_t+'\n')
+        f.write('  INITIAL_TIMESTEP_SIZE '+init_dt+'\n')
+        f.write('  MAXIMUM_TIMESTEP_SIZE '+max_dt+'\n')
+        f.write('END\n\n')
+
+        # Write the output block
+        f.write('OUTPUT\n')
+        f.write('  PERIODIC TIME '+pt+'\n')
+        f.write('  FORMAT HDF5\n')
+        f.write('  VELOCITY_AT_CENTER\n')
+        f.write('  SCREEN PERIODIC 100\n')
+        f.write('  MASS_BALANCE\n')
+        f.write('  PERIODIC_OBSERVATION TIMESTEP 1\n')
+        f.write('  VARIABLES\n')
+        f.write('    PERMEABILITY_Y\n')
+        f.write('    POROSITY\n')
+        f.write('    LIQUID_SATURATION\n')
+        f.write('    LIQUID_PRESSURE\n')
+        f.write('    CAPILLARY_PRESSURE\n')
+        f.write('  /\n')
+        f.write('END\n\n')
+
+
+        f.write('END_SUBSURFACE\n')
+        f.close()
+
+
+    # Path to the PFLOTRAN executable
+    pflotran_path = '/Users/ahaynes/pflotran_software/pflotran/src/pflotran/pflotran'
+
+    # Path to the input file
+    input_file = '/Users/ahaynes/pflotran_work/elkhorn_slough/current_iteration/elk_PFL_20230331/elkhorn_HM_20230331.in'
+
+    # Command to run PFLOTRAN
+    cmd = [pflotran_path, '-pflotranin', input_file]
+
+    # Run PFLOTRAN using subprocess
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Get the output and error messages
+    output, error = process.communicate()
+
+    # Print the output and error messages
+    # print(output.decode('utf-8'))
+    print(error.decode('utf-8'))
+    
+    #import the hdf5 file from you PFLOTRAN model run
+    file = '/Users/ahaynes/pflotran_work/elkhorn_slough/current_iteration/elk_PFL_20230331/elkhorn_HM_20230331.h5'
+    
+    #with h5.file, read in the file as f
+    with h5.File(file, "r") as f:
+
+        #get a list of all the keys (time stamps), remove the first two which are meta-data parameters
+        #strip the strings of excess characters, turn the list into a np.array, make all the time staps 'float' values
+        #creat a pandas dataframe and name the column time
+        complete_list = list(f.keys())
+        time = complete_list[2:]
+        time = [s.strip('Time:  ') for s in time]
+        time = [s.strip(' y') for s in time]
+        time = np.array(time)
+        time = [float(i) for i in time]
+        time = pd.DataFrame(time)
+        time.columns = ["time"]
+
+        # Define the dataset name to extract
+        dataset_name = 'Liquid_Pressure [Pa]'
+
+        # Initialize an empty list to hold the extracted data
+        data_list = []
+
+        # Loop through each group in the HDF5 file
+        for group_name in list(f.keys())[2:]:
+            group = f[group_name]
+
+            # Check if the group has the dataset we want to extract
+            if dataset_name in group:
+
+                # Get the dataset object
+                dataset = group[dataset_name]
+
+                # Extract the data from the dataset
+                data = dataset[()]
+
+                # Append the data to the list
+                data_list.append(data)
+
+        #Transform data into xarray
+        data = xr.DataArray(data_list)
+
+        #remane the dimensions for utlitlty
+        data = data.rename(dim_0="time", dim_1="x", dim_2="y", dim_3="z")
+
+        #remove the z dimensions which is all 1's
+        remove_z = data.sel(z=0)
+
+        #select the 20th column from the data frame as it represents our area of interest
+        x_col = remove_z.sel(x=20)
+
+        #turn the column into a pd.DataFrame
+        df = pd.DataFrame(x_col)
+
+        #populate a wtr_lvl list with water levels calculated using bernoli's equation
+        wtr_lvl = []
+        for i in df[0]:
+            h = ((i-101325)/(9.8086))/1000
+            wtr_lvl.append(h)
+
+        #turn the water level into a list
+        wtlv = pd.DataFrame({'water_level': wtr_lvl})
+
+        #join the time and water level data into one dataframe
+        t_wtlv = pd.concat([time, wtlv], axis=1, join="outer")
+
+        #sort the data frame by time
+        t_wtlv = t_wtlv.sort_values(by = ['time'])
+
+    #read in the water level data from n2p70; our calibration/validation position
+    p70 = pd.read_csv('/Users/ahaynes/pflotran_work/elkhorn_slough/data/water_levels/P70_adjusted/P70_adjusted.csv')
+
+    #convertthe time to seconds
+    n2_p70 = p70[['time_s','n2']]
+    n2_p70.rename(columns = {'time_s':'time'}, inplace = True)
+    n2_p70.loc[:,'time'] /= 31536000
+    decimals = 6    
+    n2_p70['time'] = n2_p70['time'].apply(lambda x: round(x, decimals))
+    n2_p70.to_csv('n2_p70.csv')
+    t_wtlv2 = t_wtlv[:365]
+    t_wtlv2['time'] = t_wtlv2['time'].apply(lambda x: round(x, decimals))
+    # display(n2_p70)
+    # display(t_wtlv2)
+    merged_df = pd.merge(t_wtlv2, n2_p70, on='time', how='outer')
+    # print(merged_df)
+    merged_df = merged_df.dropna()
+    # display(merged_df)
+    # # t_wtlv_y2.loc[:,'time'] = t_wtlv_y2.loc[:,'time'] - 1
+
+    diff = merged_df['n2'] - merged_df['water_level']
+
+    # Calculate the mean squared error
+    mse = np.mean(diff ** 2)
+
+    # # Calculate the root mean squared error
+    rmse = np.sqrt(mse)
+    objective_function_value = rmse
+    new_row_data = [x[0],x[1],x[2],x[3],x[4],x[5],x[6],x[7],x[8],x[9],x[10],x[11],x[12],x[13],x[14],rmse]
+    df_new_row = pd.DataFrame([new_row_data])
+    df_new_row.to_csv(csv_file_path, mode='a', index = False, header=False)
+    list_rmse.append(rmse)
+
+    
+    
+    # Return the objective function value
+    print (x)
+    print(rmse)
+    return objective_function_value
+
+
+from pyswarm import pso
+
+# Set the lower and upper bounds for the porosity and permeability parameters
+lb = [0.7, 1e-12, 0.6, 1e-13, 0.4, 1e-15, 0.3, 1e-16, 0.3, 1e-16, 0.3, 1e-5, 0.01, 0.2, 0.01]
+ub = [0.9, 1e-10, 0.8, 1e-11, 0.6, 1e-12, 0.5, 1e-14, 0.5, 1e-14, 0.5, 1e-4, 0.1, 0.4, 0.1]
+#['id1_por','id1_perm','id2_por','id2_perm','id3_por','id3_perm','id4_por','id4_perm','id5_por','id5_perm','sf_m_1','sf_alpha_1','sf_lrs_1','pf_m_1','pf_lrs_1']
+
+# Set the options for the PSO algorithm
+options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
+
+# Call the PSO solver to find the optimal solution
+xopt, fopt = pso(objective_function, lb, ub, swarmsize=30, maxiter=1000, debug=True)
+
+# Print the optimal solution
+print(xopt)
+print(fopt)

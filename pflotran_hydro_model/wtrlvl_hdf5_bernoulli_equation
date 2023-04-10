@@ -1,0 +1,117 @@
+import h5py as h5
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import xarray as xr
+
+file = '/Users/ahaynes/pflotran_work/elkhorn_slough/old_iterations/elk_PFL_20230306/elkhorn_HM_20230306.h5'
+
+#import the hdf5 file from you PFLOTRAN model run
+file = '/Users/ahaynes/pflotran_work/elkhorn_slough/current_iteration/elk_PFL_20230331/elkhorn_HM_20230331.h5'
+    
+    #with h5.file, read in the file as f
+with h5.File(file, "r") as f:
+
+        #get a list of all the keys (time stamps), remove the first two which are meta-data parameters
+        #strip the strings of excess characters, turn the list into a np.array, make all the time staps 'float' values
+        #creat a pandas dataframe and name the column time
+        complete_list = list(f.keys())
+        time = complete_list[2:]
+        time = [s.strip('Time:  ') for s in time]
+        time = [s.strip(' y') for s in time]
+        time = np.array(time)
+        time = [float(i) for i in time]
+        time = pd.DataFrame(time)
+        time.columns = ["time"]
+
+        # Define the dataset name to extract
+        dataset_name = 'Liquid_Pressure [Pa]'
+
+        # Initialize an empty list to hold the extracted data
+        data_list = []
+
+        # Loop through each group in the HDF5 file
+        for group_name in list(f.keys())[2:]:
+            group = f[group_name]
+
+            # Check if the group has the dataset we want to extract
+            if dataset_name in group:
+
+                # Get the dataset object
+                dataset = group[dataset_name]
+
+                # Extract the data from the dataset
+                data = dataset[()]
+
+                # Append the data to the list
+                data_list.append(data)
+
+        #Transform data into xarray
+        data = xr.DataArray(data_list)
+
+        #remane the dimensions for utlitlty
+        data = data.rename(dim_0="time", dim_1="x", dim_2="y", dim_3="z")
+
+        #remove the z dimensions which is all 1's
+        remove_z = data.sel(z=0)
+
+        #select the 20th column from the data frame as it represents our area of interest
+        x_col = remove_z.sel(x=20)
+
+        #turn the column into a pd.DataFrame
+        df = pd.DataFrame(x_col)
+
+        #populate a wtr_lvl list with water levels calculated using bernoli's equation
+        wtr_lvl = []
+        for i in df[0]:
+            h = ((i-101325)/(9.8086))/1000
+            wtr_lvl.append(h)
+
+        #turn the water level into a list
+        wtlv = pd.DataFrame({'water_level': wtr_lvl})
+
+        #join the time and water level data into one dataframe
+        t_wtlv = pd.concat([time, wtlv], axis=1, join="outer")
+
+        #sort the data frame by time
+        t_wtlv = t_wtlv.sort_values(by = ['time'])
+
+#read in the water level data from n2p70; our calibration/validation position
+p70 = pd.read_csv('/Users/ahaynes/pflotran_work/elkhorn_slough/data/water_levels/P70_adjusted/P70_adjusted.csv')
+
+    #convertthe time to seconds
+    n2_p70 = p70[['time_s','n2']]
+    n2_p70.rename(columns = {'time_s':'time'}, inplace = True)
+    n2_p70.loc[:,'time'] /= 31536000
+    decimals = 6    
+    n2_p70['time'] = n2_p70['time'].apply(lambda x: round(x, decimals))
+    n2_p70.to_csv('n2_p70.csv')
+    t_wtlv2 = t_wtlv[364:729]
+    t_wtlv2['time'] = t_wtlv2['time'].apply(lambda x: round(x, decimals))
+    # display(n2_p70)
+    # display(t_wtlv2)
+    merged_df = pd.merge(t_wtlv2, n2_p70, on='time', how='outer')
+    # print(merged_df)
+    merged_df = merged_df.dropna()
+    # display(merged_df)
+    # # t_wtlv_y2.loc[:,'time'] = t_wtlv_y2.loc[:,'time'] - 1
+
+    print(t_wtlv2)    
+
+
+# diff = merged_df['n2'] - merged_df['water_level']
+
+# # #diff.to_csv('diff_rmse.csv')
+# # Calculate the mean squared error
+# mse = np.mean(diff ** 2)
+
+# # # Calculate the root mean squared error
+# rmse = np.sqrt(mse)
+# print(rmse)
+# #plot the n2p70 data and the model data from column 20
+# ax = n2_p70.plot(x='time', y='n2')
+# # plt.ylim(7, 10.2)
+# # plt.figure(figsize=(40,24))
+# t_wtlv2.plot(ax=ax, x='time', y='water_level')
+
+# plt.show()
