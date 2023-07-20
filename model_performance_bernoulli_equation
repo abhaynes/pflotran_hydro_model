@@ -1,0 +1,144 @@
+import h5py as h5
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import xarray as xr
+
+
+#import the hdf5 file from you PFLOTRAN model run
+# file = '/Users/ahaynes/pflotran_work/elkhorn_slough/current_iteration/elk_PFL_20230623/elkhorn_HM_20230623_b.h5'
+file = '/Users/ahaynes/pflotran_work/elkhorn_slough/old_iterations/elk_PFL_20230505/elk_PFL_20230505/elkhorn_HM_20230505c.h5'
+#file = '/Users/ahaynes/pflotran_work/elkhorn_slough/old_iterations/elk_PFL_20230531/elk_PFL_20230531/elkhorn_PFL_20230531_test_comp.h5'
+    #with h5.file, read in the file as f
+with h5.File(file, "r") as f:
+
+        #get a list of all the keys (time stamps), remove the first two which are meta-data parameters
+        #strip the strings of excess characters, turn the list into a np.array, make all the time staps 'float' values
+        #creat a pandas dataframe and name the column time
+        complete_list = list(f.keys())
+        time = complete_list[2:]
+        time = [s.strip('Time:  ') for s in time]
+        time = [s.strip(' y') for s in time]
+        time = np.array(time)
+        time = [float(i) for i in time]
+        time = pd.DataFrame(time)
+        time.columns = ["time"]
+
+        # Define the dataset name to extract
+        dataset_name = 'Liquid_Pressure [Pa]'
+
+        # Initialize an empty list to hold the extracted data
+        data_list = []
+
+        # Loop through each group in the HDF5 file
+        for group_name in list(f.keys())[2:]:
+            group = f[group_name]
+
+            # Check if the group has the dataset we want to extract
+            if dataset_name in group:
+
+                # Get the dataset object
+                dataset = group[dataset_name]
+
+                # Extract the data from the dataset
+                data = dataset[()]
+
+                # Append the data to the list
+                data_list.append(data)
+
+        #Transform data into xarray
+        data = xr.DataArray(data_list)
+
+        #remane the dimensions for utlitlty
+        data = data.rename(dim_0="time", dim_1="x", dim_2="y", dim_3="z")
+
+        #remove the z dimensions which is all 1's
+        remove_z = data.sel(z=0)
+
+        #select the 20th column from the data frame as it represents our area of interest
+        x_col = remove_z.sel(x=14)
+
+        #turn the column into a pd.DataFrame
+        df = pd.DataFrame(x_col)
+
+        #populate a wtr_lvl list with water levels calculated using bernoli's equation
+        wtr_lvl = []
+        for i in df[0]:
+            h = ((i-101325)/(9.8086))/1000
+            wtr_lvl.append(h)
+
+        #turn the water level into a list
+        wtlv = pd.DataFrame({'water_level': wtr_lvl})
+
+        #join the time and water level data into one dataframe
+        t_wtlv = pd.concat([time, wtlv], axis=1, join="outer")
+
+        #sort the data frame by time
+        t_wtlv = t_wtlv.sort_values(by = ['time'])
+
+#read in the water level data from n2p70; our calibration/validation position
+p70 = pd.read_csv('/Users/ahaynes/pflotran_work/elkhorn_slough/data/water_levels/P70_adjusted/P70_adjusted.csv')
+# p70 = pd.read_csv('/Users/ahaynes/pflotran_work/elkhorn_slough/data/water_levels/W70_adjusted/final_WL_adjusted.csv')
+
+#convertthe time to seconds
+n2_p70 = p70[['time_s','n2']]
+n2_p70.rename(columns = {'time_s':'time'}, inplace = True)
+n2_p70.loc[:,'time'] /= 31536000
+decimals = 6    
+n2_p70['time'] = n2_p70['time'].apply(lambda x: round(x, decimals))
+# n2_p70.to_csv('n2_p70.csv')
+t_wtlv2 = t_wtlv[:8763]
+# t_wtlv2 = t_wtlv[365:730]
+# index_range = pd.date_range(start='2020-10-01', end='2021-09-30', freq='D')
+# t_wtlv2 = t_wtlv2.reset_index()
+t_wtlv2['time'] = t_wtlv2['time'].apply(lambda x: round(x, decimals))
+# t_wtlv2['time'] = t_wtlv2['time'] - 1
+
+# print(t_wtlv2)
+# display(n2_p70)
+# display(t_wtlv2)
+merged_df = pd.merge(t_wtlv2, n2_p70, on='time', how='outer')
+# # print(merged_df)
+merged_df_dropped = merged_df.dropna()
+# # display(merged_df)
+
+
+# print(len(t_wtlv2))
+# print(len(n2_p70))    
+# print(len(merged_df_dropped))
+
+diff = merged_df_dropped['n2'] - merged_df_dropped['water_level']
+
+# # #diff.to_csv('diff_rmse.csv')
+# # Calculate the mean squared error
+mse = np.mean(diff ** 2)
+
+# # Calculate the root mean squared error
+rmse = np.sqrt(mse)
+print(rmse)
+
+date_range = pd.date_range(start='2020-10-01', end='2021-09-28', freq='D')
+# print(len(date_range))
+merged_df_dropped = merged_df_dropped.set_index(date_range)
+# t_wtlv2 = t_wtlv2.set_index(date_range)
+# n2_p70 = n2_p70.set_index(date_range)
+
+merged_df_dropped['water_level'] = merged_df_dropped['water_level']/10*1.705
+merged_df_dropped['n2'] = merged_df_dropped['n2']/10*1.705
+# # Increase font sizes for better readability
+plt.rcParams['font.family'] = 'Futura'
+plt.rcParams.update({'font.size': 22})
+
+fig, ax = plt.subplots(figsize=(10, 6))  # Increase figure size for better resolution
+merged_df_dropped.plot(x= None, y='n2', ax=ax, label='Mid-marsh observation', color='C0')  # Set color to distinguish lines
+merged_df_dropped.plot(x= None, y='water_level', ax=ax, label='Modeled data', color='C1')
+ax.set_title ('Model performance: Observation vs Model')
+ax.set_ylabel('Water level (m)')  # Add units to axis label
+ax.set_xlabel('Time (WY2021)')  # Add x-axis label
+ax.set_ylim(1, 2)  # Zoom in on y-axis to highlight variation
+ax.xaxis.set_tick_params(rotation=45)  # Rotate x-axis tick labels for better readability
+ax.tick_params(axis='both', which='major', labelsize=14)  # Increase tick label size
+ax.axhline(y=1.65, color='r', linestyle='--', label = 'Marsh elevation (MASL)')
+ax.legend(loc='lower right', fontsize=16)  # Increase legend font size
+plt.tight_layout()  # Adjust spacing for better layout
+plt.show()

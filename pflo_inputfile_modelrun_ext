@@ -1,0 +1,355 @@
+import os
+# Define the grid input parameters
+nx = 40  # number of cells in x direction
+ny = 100  # number of cells in y direction
+dx = 0.5  # cell size in x direction
+dy = 0.1  # cell size in y direction
+
+# nx = 80  # number of cells in x direction
+# ny = 40 # number of cells in y direction
+# dx = 0.1  # cell size in x direction
+# dy = 0.25  # cell size in y direction
+
+#time steps
+#final time model length
+final_t = '2.d0 y'
+#intial time step
+init_dt = '1.d0 s'
+#max time step
+max_dt = '1.0 d'
+
+#output
+#periodic time
+pt = '1.d0 d'
+
+#inital datumn
+init_dat = '9.82d0'
+# 0.885872867	2.84E-13	0.717926816	3.02E-14	0.369008756	9.03E-12	0.379171796	2.36E-16	0.589174494	0.000474597	0.211787958
+
+#material ID 1
+id1_por = 0.89  # porosity of the material ID 1
+id1_perm = 2.84E-13  # permeability of the material ID 1
+#material ID 2
+id2_por = 0.72  # porosity of the material ID 2
+id2_perm = 3.02E-14  # permeability of the material ID 2
+#material ID 3
+id3_por = 0.37  # porosity of the material ID 3
+id3_perm = 9.03E-12 # permeability of the material ID 3
+#material ID 4
+id4_por = 0.38  # porosity of the material ID 4
+id4_perm = 2.36E-16  # permeability of the material ID 4
+# #material ID 5
+# id5_por = 0.435 # porosity of the material ID 5
+# id5_perm = 1.87E-16  # permeability of the material ID 5
+# #material ID 6
+id6_por = 1.0 # porosity of the material ID 5
+id6_perm = 1.0  # permeability of the material ID 5
+
+#characteristic curves
+sf_m_1 = 0.59  #saturation function M value for characteristic curve 1
+sf_alpha_1 = 4.75E-4 #saturation function ALPHA value for characteristic curve 1
+sf_lrs_1 = 0.213 #saturation function LIQUID_RESIDUAL_SATURATION value for characteristic curve 1
+pf_m_1 = 0.59  #permeability function M value for characteristic curve 1
+pf_lrs_1 = 0.213 #permeability function LIQUID_RESIDUAL_SATURATION value for characteristic curve 1
+
+sf_m_2 = 0.1  #saturation function M value for characteristic curve 1
+sf_alpha_2 = 4.75E-4 #saturation function ALPHA value for characteristic curve 1
+sf_lrs_2 = 0.001 #saturation function LIQUID_RESIDUAL_SATURATION value for characteristic curve 1
+pf_m_2 = 0.1  #permeability function M value for characteristic curve 1
+pf_lrs_2 = 0.001 #permeability function LIQUID_RESIDUAL_SATURATION value for characteristic curve 1
+
+
+with open('/Users/ahaynes/pflotran_work/elkhorn_slough/current_iteration/elk_PFL_20230522/elkhorn_PFL_20230522b.in','w') as f:
+    # Write the simulation control block
+    f.write('SIMULATION\n')
+    f.write('  SIMULATION_TYPE SUBSURFACE\n')
+    f.write('  PROCESS_MODELS\n')
+    f.write('    SUBSURFACE_FLOW flow\n')
+    f.write('      MODE RICHARDS\n')
+    f.write(' /\n')
+    f.write('/\n')
+    f.write('END\n\n')
+    f.write('SUBSURFACE\n')
+
+    # Write the grid parameters
+    f.write('GRID\n')
+    f.write('  TYPE STRUCTURED\n')
+    f.write('  ORIGIN 0.d0 0.d0 0.d0\n')
+    f.write('  GRAVITY 0 -9.8068 0\n')
+    f.write('  NXYZ  '+str(nx)+' '+str(ny)+' 1\n')
+    f.write('  DXYZ\n')
+    f.write('     '+str(dx)+'\n')
+    f.write('     '+str(dy)+'\n')
+    f.write('     1.0E+00\n')
+    f.write('  /\n')
+    f.write('END\n\n')
+
+    # Write the regions block
+    f.write('REGION all\n')
+    f.write('  COORDINATES\n')
+    f.write('    0.d0 0.d0 0.d0\n')
+    f.write('    1000.d0 1000.d0 1000.d0\n')
+    f.write('  /\n')
+    f.write('END\n\n')
+
+    f.write('REGION top_surface\n')
+    f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+    f.write('END\n\n')
+
+    f.write('REGION east_boundary\n')
+    f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+    f.write('END\n\n')
+
+    f.write('REGION west_boundary\n')
+    f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+    f.write('END\n\n')
+
+    f.write('REGION zone1\n')
+    f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+    f.write('END\n\n')
+
+    f.write('REGION zone2\n')
+    f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+    f.write('END\n\n')
+
+    f.write('REGION zone3\n')
+    f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+    f.write('END\n\n')
+
+    f.write('REGION zone4\n')
+    f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+    f.write('END\n\n')
+
+    f.write('REGION zone5\n')
+    f.write('  FILE  ./Model_info_Elkhorn_Slough.h5\n')
+    f.write('END\n\n')
+
+    # Write the characteristic curve block
+    f.write('CHARACTERISTIC_CURVES sf1\n')
+    f.write('  SATURATION_FUNCTION VAN_GENUCHTEN\n')
+    f.write('  M '+str(sf_m_1)+'\n')
+    f.write('  ALPHA   '+str(sf_alpha_1)+'\n')
+    f.write('  LIQUID_RESIDUAL_SATURATION '+str(sf_lrs_1)+'\n')
+    f.write('  /\n')
+    f.write('  PERMEABILITY_FUNCTION MUALEM_VG_LIQ\n')
+    f.write('  M '+str(pf_m_1)+'\n')
+    f.write('  LIQUID_RESIDUAL_SATURATION '+str(pf_lrs_1)+'\n')
+    f.write('  /\n')
+    f.write('END\n\n')
+
+    # Write the sediment properties block
+    f.write('MATERIAL_PROPERTY soil1\n')
+    f.write('  ID 1\n')
+    f.write('  POROSITY '+str(id1_por)+'\n')
+    f.write('  PERMEABILITY\n')
+    f.write('    PERM_ISO '+str(id1_perm)+'\n')
+    # f.write('  SOIL_COMPRESSIBILITY 1.d-10\n')
+    f.write('  /\n')
+    f.write('  CHARACTERISTIC_CURVES sf1\n')
+    f.write('END\n\n')
+
+    # Write the rock properties block
+    f.write('MATERIAL_PROPERTY soil2\n')
+    f.write('  ID 2\n')
+    f.write('  POROSITY '+str(id2_por)+'\n')
+    f.write('  PERMEABILITY\n')
+    f.write('    PERM_ISO '+str(id2_perm)+'\n')
+    # f.write('  SOIL_COMPRESSIBILITY 1.d-6\n')
+    f.write('  /\n')
+    f.write('  CHARACTERISTIC_CURVES sf1\n')
+    f.write('END\n\n')
+
+    # Write the rock properties block
+    f.write('MATERIAL_PROPERTY soil3\n')
+    f.write('  ID 3\n')
+    f.write('  POROSITY '+str(id3_por)+'\n')
+    f.write('  PERMEABILITY\n')
+    f.write('    PERM_ISO '+str(id3_perm)+'\n')
+    f.write('  /\n')
+    f.write('  CHARACTERISTIC_CURVES sf1\n')
+    f.write('END\n\n')
+
+    # Write the rock properties block
+    f.write('MATERIAL_PROPERTY soil4\n')
+    f.write('  ID 4\n')
+    f.write('  POROSITY '+str(id4_por)+'\n')
+    f.write('  PERMEABILITY\n')
+    f.write('    PERM_ISO '+str(id4_perm)+'\n')
+    f.write('  /\n')
+    f.write('  CHARACTERISTIC_CURVES sf1\n')
+    f.write('END\n\n')
+
+    # Write the rock properties block
+    f.write('MATERIAL_PROPERTY soil5\n')
+    f.write('  ID 5\n')
+    f.write('  POROSITY '+str(id4_por)+'\n')
+    f.write('  PERMEABILITY\n')
+    f.write('    PERM_ISO '+str(id4_perm)+'\n')
+    f.write('  /\n')
+    f.write('  CHARACTERISTIC_CURVES sf1\n')
+    f.write('END\n\n')
+
+        # Write the rock properties block
+    f.write('MATERIAL_PROPERTY soil5\n')
+    f.write('  ID 5\n')
+    f.write('  POROSITY '+str(id6_por)+'\n')
+    f.write('  PERMEABILITY\n')
+    f.write('    PERM_ISO '+str(id6_perm)+'\n')
+    f.write('  /\n')
+    f.write('  CHARACTERISTIC_CURVES sf2\n')
+    f.write('END\n\n')
+
+
+    # Write the initial condition block
+    f.write('FLOW_CONDITION inital\n')
+    f.write('  TYPE\n')
+    f.write('    PRESSURE hydrostatic\n')
+    f.write('  /\n')
+    f.write('  DATUM 0.d0 '+init_dat+' 0\n')
+    f.write('  GRADIENT\n')
+    f.write('  LIQUID_PRESSURE 0 -1 0\n')
+    f.write('  /\n')
+    f.write('  PRESSURE 101325.d0\n')
+    f.write('END\n\n')
+
+    # Write the east flow condition block
+    f.write('FLOW_CONDITION east_flow_condition\n')
+    f.write('  TYPE\n')
+    f.write('    PRESSURE seepage\n')
+    f.write('  /\n')
+    f.write('  CYCLIC\n')
+    f.write('  DATUM FILE ./flow-condition/east_bc_elk_n1_w70\n')
+    f.write('  GRADIENT\n')
+    f.write('  LIQUID_PRESSURE 0 -1 0\n')
+    f.write('  /\n')
+    f.write('  PRESSURE 101325.d0\n')
+    f.write('END\n\n')
+
+    # Write the west flow condition block
+    f.write('FLOW_CONDITION west_flow_condition\n')
+    f.write('  TYPE\n')
+    f.write('    PRESSURE hydrostatic\n')
+    f.write('  /\n')
+    f.write('  CYCLIC\n')
+    f.write('  DATUM FILE  ./flow-condition/west_bc_elk_n3_w70\n')
+    f.write('  GRADIENT\n')
+    f.write('  LIQUID_PRESSURE 0 -1 0\n')
+    f.write('  /\n')
+    f.write('  PRESSURE 101325.d0\n')
+    f.write('END\n\n')
+
+    # Write the recharge condition block
+    f.write('FLOW_CONDITION recharge\n')
+    f.write('  TYPE\n')
+    f.write('    FLUX neumann\n')
+    f.write('  /\n')
+    f.write('  CYCLIC\n')
+    f.write('  FLUX FILE  ./flow-condition/precip_bc_elk.txt\n')
+    f.write('END\n\n')
+
+    # Write the ETo condition block
+    f.write('FLOW_CONDITION eto\n')
+    f.write('  TYPE\n')
+    f.write('    RATE VOLUMETRIC_RATE\n')
+    f.write('  /\n')
+    f.write('  CYCLIC\n')
+    f.write('  RATE FILE  ./flow-condition/et_rate_m3day_elk.txt\n')
+    f.write('END\n\n')
+
+    # Write the ET boundary condition block
+    f.write('SOURCE_SINK eto_top\n')
+    f.write('  FLOW_CONDITION eto\n')
+    f.write('  REGION top_surface\n')
+    f.write('END\n\n')
+
+    # Write the seepageface condition block
+    f.write('FLOW_CONDITION seepage_top\n')
+    f.write('  TYPE\n')
+    f.write('    PRESSURE seepage\n')
+    f.write('  /\n')
+    f.write('  PRESSURE 101325.d0\n')
+    f.write('END\n\n')
+
+    # Write the initial boundary condition block
+    f.write('INITIAL_CONDITION\n')
+    f.write('  FLOW_CONDITION inital\n')
+    f.write('  REGION all\n')
+    f.write('END\n\n')
+
+    # Write the east boundary condition block
+    f.write('BOUNDARY_CONDITION east\n')
+    f.write('  FLOW_CONDITION east_flow_condition\n')
+    f.write('  REGION east_boundary\n')
+    f.write('END\n\n')
+
+    # Write the west boundary condition block
+    f.write('BOUNDARY_CONDITION west\n')
+    f.write('  FLOW_CONDITION west_flow_condition\n')
+    f.write('  REGION west_boundary\n')
+    f.write('END\n\n')
+
+    # Write the recharge boundary condition block
+    f.write('BOUNDARY_CONDITION infiltration_top\n')
+    f.write('  FLOW_CONDITION recharge\n')
+    f.write('  REGION top_surface\n')
+    f.write('END\n\n')
+
+    # Write the seepage boundary condition block
+    f.write('BOUNDARY_CONDITION seepage_boundary\n')
+    f.write('  FLOW_CONDITION seepage_top\n')
+    f.write('  REGION top_surface\n')
+    f.write('END\n\n')
+
+    # Write the stratigraphy couplers block
+    f.write('STRATA\n')
+    f.write('FILE ./Model_info_Elkhorn_Slough.h5\n')
+    f.write('END\n\n')
+
+    # Write the time block
+    f.write('TIME\n')
+    f.write('  FINAL_TIME '+final_t+'\n')
+    f.write('  INITIAL_TIMESTEP_SIZE '+init_dt+'\n')
+    f.write('  MAXIMUM_TIMESTEP_SIZE '+max_dt+'\n')
+    f.write('END\n\n')
+
+    # Write the output block
+    f.write('OUTPUT\n')
+    f.write('  PERIODIC TIME '+pt+'\n')
+    f.write('  FORMAT HDF5\n')
+    f.write('  VELOCITY_AT_CENTER\n')
+    f.write('  SCREEN PERIODIC 100\n')
+    f.write('  MASS_BALANCE\n')
+    f.write('  PERIODIC_OBSERVATION TIMESTEP 1\n')
+    f.write('  VARIABLES\n')
+    f.write('    PERMEABILITY_Y\n')
+    f.write('    POROSITY\n')
+    f.write('    LIQUID_SATURATION\n')
+    f.write('    LIQUID_PRESSURE\n')
+    f.write('    CAPILLARY_PRESSURE\n')
+    f.write('  /\n')
+    f.write('END\n\n')
+    # f.write('WALLCLOCK_STOP 10 min\n')
+    f.write('END_SUBSURFACE\n')
+    
+    f.close()
+
+import subprocess
+
+# Path to the PFLOTRAN executable
+pflotran_path = '/Users/ahaynes/pflotran_software/pflotran/src/pflotran/pflotran'
+
+# Path to the input file
+input_file = '/Users/ahaynes/pflotran_work/elkhorn_slough/current_iteration/elk_PFL_20230522/elkhorn_PFL_20230522b.in'
+
+# Command to run PFLOTRAN
+cmd = [pflotran_path, '-pflotranin', input_file]
+
+# Run PFLOTRAN using subprocess
+process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+# Get the output and error messages
+output, error = process.communicate()
+
+# Print the output and error messages
+print(output.decode('utf-8'))
+print(error.decode('utf-8'))
